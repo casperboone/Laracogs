@@ -117,6 +117,7 @@ class CrudGenerator
     /**
      * Create the routes
      * @param  array $config
+     * @param  bool $appendRoutes
      * @return bool
      */
     public function createRoutes($config, $appendRoutes = true)
