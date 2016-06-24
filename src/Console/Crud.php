@@ -84,6 +84,8 @@ class Crud extends Command
 
         $table = ucfirst(str_singular($this->argument('table')));
 
+        $splitTable = [];
+
         if (stristr($table, '_')) {
             $splitTable = explode('_', $table);
             $table = $splitTable[1];
