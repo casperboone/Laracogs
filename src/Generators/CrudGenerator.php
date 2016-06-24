@@ -251,6 +251,7 @@ class CrudGenerator
     /**
      * Create the Api
      * @param  array $config
+     * @param  bool $appendRoutes
      * @return bool
      */
     public function createApi($config, $appendRoutes = true)
