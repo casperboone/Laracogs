@@ -196,7 +196,6 @@ class CrudGenerator
      */
     public function createTests($config)
     {
-        $testMakerResults = [];
         foreach (explode(',', $config['tests_generated']) as $testType) {
             $test = file_get_contents($config['template_source'].'/Tests/'.ucfirst($testType).'Test.txt');
 
