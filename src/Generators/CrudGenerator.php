@@ -2,7 +2,6 @@
 
 namespace Yab\Laracogs\Generators;
 
-use Exception;
 use Illuminate\Filesystem\Filesystem;
 
 /**
