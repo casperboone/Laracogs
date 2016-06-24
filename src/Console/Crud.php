@@ -99,7 +99,6 @@ class Crud extends Command
             }
         }
 
-        $config = [];
         $config = [
             'template_source'            => '',
             'bootstrap'                  => false,
@@ -152,7 +151,6 @@ class Crud extends Command
         $config = $this->setConfig($config, $section, $table);
 
         if ($section) {
-            $config = [];
             $config = [
                 'template_source'            => '',
                 'bootstrap'                  => false,
