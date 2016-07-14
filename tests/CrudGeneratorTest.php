@@ -5,7 +5,8 @@ use Yab\Laracogs\Generators\CrudGenerator;
 
 class CrudGeneratorTest extends PHPUnit_Framework_TestCase
 {
-    protected $encrypter;
+    protected $generator;
+    protected $config;
 
     public function setUp()
     {
@@ -13,6 +14,11 @@ class CrudGeneratorTest extends PHPUnit_Framework_TestCase
         $this->config = [
             'bootstrap'                  => false,
             'semantic'                   => false,
+            'template_source'            => '',
+            '_sectionPrefix_'            => '',
+            '_sectionTablePrefix_'       => '',
+            '_sectionRoutePrefix_'       => '',
+            '_sectionNamespace_'         => '',
             'relationships'              => null,
             'schema'                     => null,
             '_path_facade_'              => vfsStream::url('Facades'),
@@ -20,10 +26,12 @@ class CrudGeneratorTest extends PHPUnit_Framework_TestCase
             '_path_repository_'          => vfsStream::url('Repositories/'.ucfirst('testTable')),
             '_path_model_'               => vfsStream::url('Repositories/'.ucfirst('testTable')),
             '_path_controller_'          => vfsStream::url('Http/Controllers'),
+            '_path_api_controller_'      => vfsStream::url('Http/Controllers/Api'),
             '_path_views_'               => vfsStream::url('resources/views'),
             '_path_tests_'               => vfsStream::url('tests'),
             '_path_request_'             => vfsStream::url('Http/Requests'),
             '_path_routes_'              => vfsStream::url('Http/routes.php'),
+            '_path_api_routes_'          => vfsStream::url('Http/api-routes.php'),
             'routes_prefix'              => '',
             'routes_suffix'              => '',
             '_namespace_services_'       => 'App\Services',
@@ -31,14 +39,23 @@ class CrudGeneratorTest extends PHPUnit_Framework_TestCase
             '_namespace_repository_'     => 'App\Repositories\\'.ucfirst('testTable'),
             '_namespace_model_'          => 'App\Repositories\\'.ucfirst('testTable'),
             '_namespace_controller_'     => 'App\Http\Controllers',
+            '_namespace_api_controller_' => 'App\Http\Controllers\Api',
             '_namespace_request_'        => 'App\Http\Requests',
             '_lower_case_'               => strtolower('testTable'),
             '_lower_casePlural_'         => str_plural(strtolower('testTable')),
             '_camel_case_'               => ucfirst(camel_case('testTable')),
             '_camel_casePlural_'         => str_plural(camel_case('testTable')),
             'template_source'            => __DIR__.'/../src/Templates',
-            'tests_generated'            => 'integration,service,repository',
         ];
+    }
+
+    public function testApiGenerator()
+    {
+        $this->crud = vfsStream::setup("Http/Controllers/Api");
+        $this->generator->createApi($this->config, false);
+        $this->assertTrue($this->crud->hasChild('Http/Controllers/Api/TestTableController.php'));
+        $contents = $this->crud->getChild('Http/Controllers/Api/TestTableController.php');
+        $this->assertTrue(strpos($contents->getContent(), 'class TestTableController extends Controller') !== false);
     }
 
     public function testControllerGenerator()
@@ -84,6 +101,10 @@ class CrudGeneratorTest extends PHPUnit_Framework_TestCase
         $this->generator->createRoutes($this->config, false);
         $contents = $this->crud->getChild('Http/routes.php');
         $this->assertTrue(strpos($contents->getContent(), 'TestTableController') !== false);
+
+        // Ensure Search Route specification exists and Controller and Action remain
+        $this->assertContains('\'as\' => \'testtables.search\'', $contents->getContent());
+        $this->assertContains('\'uses\' => \'TestTableController@search\'', $contents->getContent());
     }
 
     public function testViewsGenerator()
@@ -98,42 +119,34 @@ class CrudGeneratorTest extends PHPUnit_Framework_TestCase
     public function testTestGenerator()
     {
         $this->crud = vfsStream::setup("tests");
-        $this->generator->createTests($this->config);
-        $this->assertTrue($this->crud->hasChild('tests/TestTableIntegrationTest.php'));
-        $contents = $this->crud->getChild('tests/TestTableIntegrationTest.php');
-        $this->assertTrue(strpos($contents->getContent(), 'class TestTableIntegrationTest') !== false);
-        $this->assertTrue($this->crud->hasChild('tests/TestTableRepositoryTest.php'));
-        $contents = $this->crud->getChild('tests/TestTableRepositoryTest.php');
-        $this->assertTrue(strpos($contents->getContent(), 'class TestTableRepositoryTest') !== false);
-        $this->assertTrue($this->crud->hasChild('tests/TestTableServiceTest.php'));
-        $contents = $this->crud->getChild('tests/TestTableServiceTest.php');
-        $this->assertTrue(strpos($contents->getContent(), 'class TestTableServiceTest') !== false);
+        $this->assertTrue($this->generator->createTests($this->config, false));
+
+        $this->assertTrue($this->crud->hasChild('tests/acceptance/TestTableAcceptanceTest.php'));
+        $contents = $this->crud->getChild('tests/acceptance/TestTableAcceptanceTest.php');
+        $this->assertTrue(strpos($contents->getContent(), 'class TestTableAcceptanceTest') !== false);
+
+        $this->assertTrue($this->crud->hasChild('tests/integration/TestTableRepositoryIntegrationTest.php'));
+        $contents = $this->crud->getChild('tests/integration/TestTableRepositoryIntegrationTest.php');
+        $this->assertTrue(strpos($contents->getContent(), 'class TestTableRepositoryIntegrationTest') !== false);
+
+        $this->assertTrue($this->crud->hasChild('tests/integration/TestTableServiceIntegrationTest.php'));
+        $contents = $this->crud->getChild('tests/integration/TestTableServiceIntegrationTest.php');
+        $this->assertTrue(strpos($contents->getContent(), 'class TestTableServiceIntegrationTest') !== false);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Other method tests
-    |--------------------------------------------------------------------------
-    */
-
-    public function testPrepareTableDefinition()
+    public function testTestGeneratorServiceOnly()
     {
-        $table = "id:increments,name:string,details:text";
-        $result = $this->generator->prepareTableDefinition($table);
+        $this->crud = vfsStream::setup("tests");
+        $this->assertTrue($this->generator->createTests($this->config, true));
 
-        $this->assertTrue((bool) strstr($result, 'id'));
-        $this->assertTrue((bool) strstr($result, 'name'));
-        $this->assertTrue((bool) strstr($result, 'details'));
+        $this->assertFalse($this->crud->hasChild('tests/acceptance/TestTableAcceptanceTest.php'));
+
+        $this->assertTrue($this->crud->hasChild('tests/integration/TestTableRepositoryIntegrationTest.php'));
+        $contents = $this->crud->getChild('tests/integration/TestTableRepositoryIntegrationTest.php');
+        $this->assertTrue(strpos($contents->getContent(), 'class TestTableRepositoryIntegrationTest') !== false);
+
+        $this->assertTrue($this->crud->hasChild('tests/integration/TestTableServiceIntegrationTest.php'));
+        $contents = $this->crud->getChild('tests/integration/TestTableServiceIntegrationTest.php');
+        $this->assertTrue(strpos($contents->getContent(), 'class TestTableServiceIntegrationTest') !== false);
     }
-
-    public function testPrepareTableExample()
-    {
-        $table = "id:increments,name:string,details:text,created_on:dateTime";
-        $result = $this->generator->prepareTableExample($table);
-
-        $this->assertTrue((bool) strstr($result, 'laravel'));
-        $this->assertTrue((bool) strstr($result, 'I am Batman'));
-        $this->assertTrue((bool) strstr($result, '1'));
-    }
-
 }
